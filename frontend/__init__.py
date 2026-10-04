@@ -1,0 +1,1 @@
+"""Streamlit expense tracking interface."""

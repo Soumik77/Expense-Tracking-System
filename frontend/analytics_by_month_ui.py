@@ -1,30 +1,22 @@
-from calendar import month
-
-import streamlit as st
-from datetime import date
-import requests
 import pandas as pd
-API_URL = 'http://localhost:8000'
+import streamlit as st
+
+from frontend.api_client import ApiError, request_api
 
 
 def analytics_by_month_tab():
-    st.title("Expense Breakdown By Months")
-    response = requests.get(f'{API_URL}/summary/')
-    if response.status_code == 200:
-        existing_expense = response.json()
-    else:
-        st.error("Failed to retrieve expenses")
-        existing_expense = []
-    res = response.json()
-    data = pd.DataFrame({
-        "Month": [resp['month_name'] for resp in res],
-        'Total': [resp['total_expense'] for resp in res]
-    })
-    data_sorted = data.sort_values(by='Month')
-    st.bar_chart(data=data_sorted.set_index("Month")['Total'])
-    st.table(data_sorted)
-
-
-
-
-
+    st.subheader("Expense breakdown by month")
+    try:
+        response = request_api("GET", "/summary/")
+    except ApiError as exc:
+        st.error(str(exc))
+        return
+    if not response:
+        st.info("No expenses have been recorded yet.")
+        return
+    data = pd.DataFrame([
+        {"Month": row["month"], "Total": float(row["total_expense"])}
+        for row in response
+    ]).sort_values("Month")
+    st.bar_chart(data.set_index("Month")["Total"])
+    st.table(data)
