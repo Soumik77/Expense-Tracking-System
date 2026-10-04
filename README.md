@@ -1,191 +1,124 @@
+# Expense Tracking and Analytics System
 
-# Expense Management System
-
-This project is an **Expense Management System** built with a **Streamlit frontend** and a **FastAPI backend**. It allows users to add or update daily expenses and analyze spending patterns by category and month.
-
-The project helped me gain practical knowledge in **Python basics, Pandas data analysis, backend development using FastAPI, and frontend development using Streamlit**.
+A Python learning project for recording daily expenses and reviewing spending by category and month. The application uses a Streamlit interface, a FastAPI backend, and a MySQL database.
 
 ## Features
 
-* Add and update daily expense records
-* Store expense amount, category, date, and notes
-* Analyze expenses by selected date range
-* View expense breakdown by category
-* View monthly expense summary
-* Display analytics using bar charts
-* Show monthly expense data in table format
-* Connect Streamlit frontend with FastAPI backend
-* Organize backend, frontend, and test files in a structured way
+- Add, edit, and remove expense records for a selected date.
+- Save all changes for a day in one database transaction.
+- Filter category totals by date range and display percentage breakdowns.
+- Compare monthly totals, keeping different years separate.
+- Validate expense amounts, categories, note lengths, and date ranges.
+- Run automated database, API, and interface checks.
 
-## Tech Stack
+## Stack
 
-* **Programming Language:** Python
-* **Frontend:** Streamlit
-* **Backend:** FastAPI
-* **Data Analysis:** Pandas
-* **Testing:** Pytest
-* **API Server:** Uvicorn
-* **Version Control:** Git and GitHub
+Python 3.12, MySQL 8, FastAPI, Streamlit, pandas, Pydantic, pytest.
 
-## Project Structure
+## Local setup
 
-```bash
-project-1/
-│
-├── backend/
-│   ├── db_helper.py
-│   ├── logging_setup.py
-│   ├── server.py
-│   └── server.log
-│
-├── frontend/
-│   ├── add_update_ui.py
-│   ├── analytics_by_month_ui.py
-│   ├── analytics_ui.py
-│   └── app.py
-│
-├── test/
-│   ├── backend/
-│   │   └── test_db_helper.py
-│   ├── frontend/
-│   └── conftest.py
-│
-├── requirement.txt
-└── README.md
-```
+Use a local MySQL 8.0.16 or later server. The schema uses InnoDB transactions and an enforced positive-amount constraint. The commands below assume you are in the project root.
 
-## Application Pages
+If you downloaded a ZIP of the project, extract it and open a terminal in that folder. Skip the clone and change-directory commands below.
 
-### 1. Add / Update Expense
-
-The **Add/Update** page allows users to enter expense information such as date, amount, category, and notes. Users can submit multiple expense records for a selected date.
-
-### 2. Analytics by Category
-
-The **Analytics By Category** page allows users to select a start date and end date. Based on the selected date range, the system shows a category-wise expense breakdown using a bar chart.
-
-### 3. Analytics by Month
-
-The **Analytics By Month** page shows monthly expense summaries. It displays both a bar chart and a table so that users can easily compare expenses across different months.
-
-## Setup Instructions
-
-### 1. Clone the Repository
+### 1. Install the Python dependencies
 
 ```bash
 git clone https://github.com/Soumik77/Expense-Tracking-System.git
-cd Expense-Tracking-System.git
+cd Expense-Tracking-System
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirement.txt
 ```
 
-### 2. Create a Virtual Environment
+On Windows, create the environment with `py -3 -m venv .venv` and activate it in PowerShell with `.venv\Scripts\Activate.ps1`.
+
+### 2. Create the database
+
+Open the MySQL client as a local administrator:
 
 ```bash
-python3 -m venv venv
+mysql -u root -p
 ```
 
-### 3. Activate the Virtual Environment
+In the MySQL client, run:
 
-For macOS/Linux:
+```sql
+SOURCE database/schema.sql;
+CREATE USER 'expense_app'@'127.0.0.1' IDENTIFIED BY 'choose-a-new-local-password';
+GRANT SELECT, INSERT, DELETE ON expense_manager.* TO 'expense_app'@'127.0.0.1';
+```
+
+Replace the example password locally. Do not reuse a password that was previously committed. If the account already exists, update its password instead of creating it again.
+
+The schema script creates a new table if it is missing. It does not migrate or erase an existing table. Existing installations must have an InnoDB `expenses` table with the columns and constraints shown in `database/schema.sql`. Back up existing data before changing its schema.
+
+Optionally, load synthetic examples into an **empty demo database**, once:
+
+```sql
+SOURCE database/sample_data.sql;
+```
+
+These examples use August and September 2026. Choose those dates in the interface to view them.
+
+### 3. Configure local credentials
 
 ```bash
-source venv/bin/activate
+cp .env.example .env
 ```
 
-For Windows:
+On Windows PowerShell, use `Copy-Item .env.example .env`.
+
+Edit `.env` to set `DB_PASSWORD` to your new local password. The other defaults match the database setup above. The application loads this file automatically; environment variables take precedence. The file is excluded from Git.
+
+### 4. Start both processes
+
+Backend, in one terminal:
 
 ```bash
-venv\Scripts\activate
+python -m uvicorn backend.server:app --reload --host 127.0.0.1
 ```
 
-### 4. Install Required Packages
+Frontend, in another terminal with the same environment activated:
 
 ```bash
-pip install -r requirement.txt
+python -m streamlit run frontend/app.py --server.address 127.0.0.1
 ```
 
-## How to Run the Project
+Open the interface at http://127.0.0.1:8501. API documentation is at http://127.0.0.1:8000/docs.
 
-### 1. Start the FastAPI Backend Server
+## Using the application
 
-From the project root directory, run:
+- Amounts must be positive and have no more than two decimal places.
+- Set an existing amount to zero to remove that row on the next save.
+- Clearing every record for a date requires the confirmation checkbox.
+- A failed read disables the edit form. A failed save does not display a success message.
+- The API replaces a selected day's records as one operation. An empty list clears that day.
+- Monthly reports use `YYYY-MM` labels, so the same month in different years stays separate.
+
+This is a local, single-user learning application. It has no authentication or multi-user conflict detection. Keep it bound to localhost when using personal records.
+
+## Tests
 
 ```bash
-uvicorn backend.server:app --reload
+python -m pytest -q
 ```
 
-The backend server will run at:
+The default suite uses mocks for database and HTTP boundaries and runs Streamlit interface checks without a browser. It cannot connect to your personal database. Live MySQL tests are skipped unless explicitly enabled.
 
-```bash
-http://127.0.0.1:8000
-```
+See [TESTING.md](TESTING.md) for the optional MySQL integration tests, including rollback after a failed insert.
 
-You can also check the FastAPI documentation at:
+## Project structure
 
-```bash
-http://127.0.0.1:8000/docs
-```
+- `backend/`: API routes, configuration, database queries, and operational logging.
+- `frontend/`: Streamlit pages and the API request helper.
+- `database/schema.sql`: database and InnoDB table definition.
+- `database/sample_data.sql`: synthetic demonstration records.
+- `test/`: database, API, interface, and opt-in MySQL tests.
+- `.env.example`: configuration template without a password.
 
-### 2. Start the Streamlit Frontend
+## Repository privacy
 
-Open another terminal and run:
+Passwords belong in `.env`, not source code. Logs, cached Python files, virtual environments, and editor files are excluded from Git. Application logs record operational outcomes without amounts, categories, or notes.
 
-```bash
-streamlit run frontend/app.py
-```
-
-The frontend application will open in your browser.
-
-## Testing
-
-To run the test cases, use:
-
-```bash
-pytest
-```
-
-This will run the available backend and frontend test files inside the `test/` directory.
-
-## Screenshots
-
-### Add / Update Expense Page
-
-![Add Update Expense](screenshots/add-update-ui.png)
-
-### Analytics by Category
-
-![Analytics By Category](screenshots/analytics-by-category-ui.png)
-
-### Analytics by Month
-
-![Analytics By Month](screenshots/analytics-by-months.png)
-
-## What I Learned
-
-Through this project, I learned and practiced:
-
-* Python programming fundamentals
-* Writing modular Python code
-* Working with data using Pandas
-* Building REST APIs using FastAPI
-* Creating frontend applications using Streamlit
-* Connecting frontend and backend using API calls
-* Performing category-wise and month-wise data analysis
-* Visualizing data using charts
-* Writing test cases using Pytest
-* Structuring a Python full-stack project
-
-## Future Improvements
-
-* Add user authentication
-* Add income tracking feature
-* Add budget limit and alert system
-* Export expense reports as CSV or PDF
-* Add database support such as MySQL or PostgreSQL
-* Improve UI design and responsiveness
-* Add more advanced dashboard analytics
-
-## Conclusion
-
-The **Expense Management System** is a practical Python-based project that combines frontend development, backend API development, and data analysis. It helped me understand how to build and structure a real-world full-stack application using Streamlit, FastAPI, and Pandas.
-
-# Expense-Tracking-System
+See [SECURITY_CLEANUP.md](SECURITY_CLEANUP.md) for the remaining credential-rotation and Git-history steps after replacing an older checkout.

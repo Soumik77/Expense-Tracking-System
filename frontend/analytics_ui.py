@@ -1,34 +1,36 @@
-import streamlit as st
 from datetime import date
-import requests
-import pandas as pd
 
-API_URL = 'http://localhost:8000'
+import pandas as pd
+import streamlit as st
+
+from frontend.api_client import ApiError, request_api
+
 
 def add_analytics_tab():
-    col1, col2 = st.columns(2)
-    with col1:
-        start_date = st.date_input('Start Date', date(2024, 8, 1))
-    with col2:
-        end_date = st.date_input("End Date", date(2024, 8, 5))
+    today = date.today()
+    start_col, end_col = st.columns(2)
+    start_date = start_col.date_input("Start date", today.replace(day=1))
+    end_date = end_col.date_input("End date", today)
 
-
-    if st.button("Get Analytics"):
-        payload = {
-            "start_date":start_date.strftime("%Y-%m-%d"),
-            "end_date": end_date.strftime("%Y-%m-%d")
-        }
-        response = requests.post(f'{API_URL}/analytics',json=payload)
-        response = response.json()
-        data  = pd.DataFrame({
-            "Category":list(response.keys()),
-            'Total':[response[category]['total'] for category in response],
-            'Percentage': [response[category]['percentage'] for category in response]
-
-        })
-        data_sorted = data.sort_values(by='Percentage',ascending=False)
-        st.title("Expense Breakdown By Category")
-        st.bar_chart(data = data_sorted.set_index("Category")['Percentage'])
-        st.table(data_sorted)
-
-
+    if st.button("Get analytics"):
+        if start_date > end_date:
+            st.error("Start date must be on or before end date.")
+            return
+        try:
+            response = request_api("POST", "/analytics/", json={
+                "start_date": start_date.isoformat(), "end_date": end_date.isoformat(),
+            })
+        except ApiError as exc:
+            st.error(str(exc))
+            return
+        if not response:
+            st.info("No expenses were found in this date range.")
+            return
+        data = pd.DataFrame([
+            {"Category": category, "Total": float(values["total"]),
+             "Percentage": float(values["percentage"])}
+            for category, values in response.items()
+        ]).sort_values("Percentage", ascending=False)
+        st.subheader("Expense breakdown by category")
+        st.bar_chart(data.set_index("Category")["Percentage"])
+        st.table(data)

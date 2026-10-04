@@ -1,20 +1,13 @@
 import logging
 
 
-
-def setup_logger(name,log_file='server.log',level=logging.DEBUG):
-    # Create a custom logger
+def setup_logger(name):
+    """Log operational events to stderr, without creating expense log files."""
     logger = logging.getLogger(name)
-
-    # Configure the custom logger
-    logger.setLevel(level)
-    file_handler = logging.FileHandler(log_file)
-    formatter = logging.Formatter("%(asctime)s -%(name)s - %(levelname)s - %(message)s")
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        logger.addHandler(handler)
+    logger.propagate = False
     return logger
-
-
-
-
-
